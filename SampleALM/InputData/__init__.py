@@ -27,8 +27,6 @@ def bond_data():
 # ---------------------------------------------------------------------------
 # References
 
-model_point_10000 = ("Pickle", 2344556816160)
+segment_data = ("Pickle", 1380814116704)
 
-segment_data = ("Pickle", 2344556818752)
-
-segment_map = ("Pickle", 2344556818752)
+segment_map = ("Pickle", 1380814116704)

@@ -97,6 +97,11 @@ _spaces = []
 # ---------------------------------------------------------------------------
 # Cells
 
+def bond_seg():
+    data = input_data.bond_data()
+    return data[data['ast_seg_id'] == ast_seg_id]
+
+
 def bond_term_structure(bond_id):
 
     spread = input_data.bond_data().loc[bond_id]['z_spread']
@@ -178,6 +183,13 @@ def date_(t):
         return date_(t-1) + ql.Period('1M')
 
 
+def face_value(bond_id, t):
+    if t == 0:
+        return input_data.bond_data().loc[bond_id]['face_value']
+    else:
+        return face_value(bond_id, t-1) + trade_amount(bond_id, t-1)
+
+
 def fixed_rate_bond(bond_id):
     """Returns QuantLib’s `FixedRateBond`_ object
 
@@ -226,6 +238,44 @@ def fixed_rate_bond(bond_id):
     bond.setPricingEngine(bondEngine)
 
     return bond
+
+
+def last_cashflow_index(bond_id, t):
+
+    cf_len = len(cashflows(bond_id))
+    assert cf_len > 0
+
+    if t == 0:
+        idx = -1
+    elif last_cashflow_index(bond_id, t-1) + 1 >= cf_len:
+        return cf_len
+    else:
+        idx = last_cashflow_index(bond_id, t-1)
+
+    while cashflows(bond_id)[idx + 1].date() < date_(t):
+        idx += 1
+        if idx + 1 == cf_len:
+            break
+
+    return idx
+
+
+def liab_cashflows(t):
+    df = input_data.segment_map
+    # return liab_cashflows(t)
+    return sum(liab_seg[i].liab_cf(t) for i in df.index[df['asset_id'] == ast_seg_id])
+
+
+def market_value(bond_id, t):
+    return face_value(bond_id, t) * sum(
+        unit_disc_cashflows(bond_id, tt) for tt in range(t, step_size())
+        ) / bond_term_structure(bond_id).discount(date_(t))
+
+
+def market_value_pre(bond_id, t):
+    return face_value(bond_id, t-1) * sum(
+        unit_disc_cashflows(bond_id, tt) for tt in range(t, step_size())
+        ) / bond_term_structure(bond_id).discount(date_(t))
 
 
 def market_values():
@@ -349,57 +399,39 @@ def schedule(bond_id):
         )
 
 
-def step_size():
-    """Returns the number of time steps
-
-    Calculates the number of time steps from :attr:`date_end`
-    and :func:`date_` ren returns it.
-    """
-    d_end = ql.Date(date_end, "%Y-%m-%d")
-
-    t = 0
-    while True:
-        if date_(t) < d_end:
-            t += 1
-        else:
-            return t
+def seg_asset_cashflows(t):
+    return sum(step_cashflows(i, t) for i in bond_seg().index)
 
 
-def z_spread_recalc(bond_id):
-    """Calculate Z-spread
-
-    For the bond specified by ``bond_id``,
-    Calculate the Z-spread of the bond specified by ``bond_id`` from
-    the bond's market value and :func:`riskfree_curve`.
-    This is for testing that the calculated Z-spread matches the input in :attr:`bond_data`.
-    """
-    return ql.BondFunctions.zSpread(
-        fixed_rate_bond(bond_id), 
-        fixed_rate_bond(bond_id).cleanPrice(), 
-        riskfree_curve(),
-        # ql.Thirty360(ql.Thirty360.BondBasis), 
-        ql.ActualActual(ql.ActualActual.ISDA),
-        ql.Compounded, ql.Annual)
-
-
-def last_cashflow_index(bond_id, t):
-
-    cf_len = len(cashflows(bond_id))
-    assert cf_len > 0
-
+def seg_cash(t):
     if t == 0:
-        idx = -1
-    elif last_cashflow_index(bond_id, t-1) + 1 >= cf_len:
-        return cf_len
+        return 0
     else:
-        idx = last_cashflow_index(bond_id, t-1)
+        return seg_cash_after_trade(t-1) + seg_asset_cashflows(t) + liab_cashflows(t)
 
-    while cashflows(bond_id)[idx + 1].date() < date_(t):
-        idx += 1
-        if idx + 1 == cf_len:
-            break
 
-    return idx
+def seg_cash_after_trade(t):
+    return 0
+
+
+def seg_market_value(t):
+    return sum(market_value(i, t) for i in bond_seg().index)
+
+
+def seg_market_value_pre(t):
+    return sum(market_value_pre(i, t) for i in bond_seg().index)
+
+
+def seg_mv_return(t):
+    mv = seg_market_value
+    if seg_market_value(t) > 0:
+        return (seg_market_value_pre(t + 1) + seg_asset_cashflows(t) - mv(t)) / mv(t)
+    else:
+        return 0
+
+
+def seg_trade_amount(t):
+    return seg_cash(t)
 
 
 def step_cashflows(bond_id, t):
@@ -420,6 +452,29 @@ def step_cashflows(bond_id, t):
 
 
     return result
+
+
+def step_size():
+    """Returns the number of time steps
+
+    Calculates the number of time steps from :attr:`date_end`
+    and :func:`date_` ren returns it.
+    """
+    d_end = ql.Date(date_end, "%Y-%m-%d")
+
+    t = 0
+    while True:
+        if date_(t) < d_end:
+            t += 1
+        else:
+            return t
+
+
+def trade_amount(bond_id, t):
+    if t == 0:
+        return 0
+    else:
+        return face_value(bond_id, t) * seg_trade_amount(t) / seg_market_value(t)
 
 
 def unit_disc_cashflows(bond_id, t):
@@ -443,76 +498,21 @@ def unit_disc_cashflows(bond_id, t):
     return result
 
 
-def market_value(bond_id, t):
-    return face_value(bond_id, t) * sum(
-        unit_disc_cashflows(bond_id, tt) for tt in range(t, step_size())
-        ) / bond_term_structure(bond_id).discount(date_(t))
+def z_spread_recalc(bond_id):
+    """Calculate Z-spread
 
-
-def bond_seg():
-    data = input_data.bond_data()
-    return data[data['ast_seg_id'] == ast_seg_id]
-
-
-def seg_market_value(t):
-    return sum(market_value(i, t) for i in bond_seg().index)
-
-
-def seg_cashflows(t):
-    return sum(step_cashflows(i, t) for i in bond_seg().index)
-
-
-def seg_mv_return(t):
-    mv = seg_market_value
-    if seg_market_value(t) > 0:
-        return (seg_market_value_pre(t + 1) + seg_cashflows(t) - mv(t)) / mv(t)
-    else:
-        return 0
-
-
-def face_value(bond_id, t):
-    if t == 0:
-        return input_data.bond_data().loc[bond_id]['face_value']
-    else:
-        return face_value(bond_id, t-1) + trade_amount(bond_id, t-1)
-
-
-def seg_cash(t):
-    if t == 0:
-        return 0
-    else:
-        return seg_cash_after_trade(t-1) + seg_cashflows(t) + liab_cashflows(t)
-
-
-def liab_cashflows(t):
-    df = input_data.segment_map
-    # return liab_cashflows(t)
-    return sum(liab_seg[i].Policy.liab_cf(t) for i in df.index[df['asset_id'] == ast_seg_id])
-
-
-def trade_amount(bond_id, t):
-    if t == 0:
-        return 0
-    else:
-        return face_value(bond_id, t) * seg_trade_amount(t) / seg_market_value(t)
-
-
-def seg_cash_after_trade(t):
-    return 0
-
-
-def seg_trade_amount(t):
-    return seg_cash(t)
-
-
-def market_value_pre(bond_id, t):
-    return face_value(bond_id, t-1) * sum(
-        unit_disc_cashflows(bond_id, tt) for tt in range(t, step_size())
-        ) / bond_term_structure(bond_id).discount(date_(t))
-
-
-def seg_market_value_pre(t):
-    return sum(market_value_pre(i, t) for i in bond_seg().index)
+    For the bond specified by ``bond_id``,
+    Calculate the Z-spread of the bond specified by ``bond_id`` from
+    the bond's market value and :func:`riskfree_curve`.
+    This is for testing that the calculated Z-spread matches the input in :attr:`bond_data`.
+    """
+    return ql.BondFunctions.zSpread(
+        fixed_rate_bond(bond_id), 
+        fixed_rate_bond(bond_id).cleanPrice(), 
+        riskfree_curve(),
+        # ql.Thirty360(ql.Thirty360.BondBasis), 
+        ql.ActualActual(ql.ActualActual.ISDA),
+        ql.Compounded, ql.Annual)
 
 
 # ---------------------------------------------------------------------------
@@ -524,8 +524,8 @@ date_init = "2022-01-01"
 
 ql = ("Module", "QuantLib")
 
-zero_curve = ("IOSpec", 2344555098960, 2344525507632)
-
 input_data = ("Interface", ("..", "InputData"), "auto")
 
 liab_seg = ("Interface", ("..", "LiabSeg"), "auto")
+
+zero_curve = ("IOSpec", 1396292048448, 1380814308896)

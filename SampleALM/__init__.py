@@ -5,16 +5,15 @@ foo bar
 
 from modelx.serialize.jsonvalues import *
 
-_name = "BasicBonds"
+_name = "ALMPoC"
 
 _allow_none = False
 
 _spaces = [
-    "Bonds",
-    "LiabSeg",
+    "AssetSeg",
     "InputData",
-    "Liab",
-    "Results"
+    "Results",
+    "LiabSeg"
 ]
 
 # ---------------------------------------------------------------------------
