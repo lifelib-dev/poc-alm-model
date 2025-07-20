@@ -79,6 +79,21 @@ def pols_result(liab_id):
     return pd.DataFrame(data, index=t_len)
 
 
+def asset_result(ast_seg_id):
+
+    asset = asset_seg[ast_seg_id]
+
+    t_len = 121
+
+    data = {
+        "seg_face_value": [asset.seg_face_value(t) for t in range(t_len)],
+        "seg_market_value": [asset.seg_market_value(t) for t in range(t_len)],
+        "seg_mv_return": [asset.seg_mv_return(t) for t in range(t_len)],
+    }
+
+    return pd.DataFrame(data, index=range(t_len))
+
+
 # ---------------------------------------------------------------------------
 # References
 

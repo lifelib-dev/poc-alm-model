@@ -1831,25 +1831,25 @@ def liab_cf(t):
 # ---------------------------------------------------------------------------
 # References
 
-disc_rate_ann = ("Pickle", 2084616786560)
+disc_rate_ann = ("Pickle", 2223835644464)
 
-mort_table = ("Pickle", 2084602153824)
+mort_table = ("Pickle", 2223834014080)
 
 np = ("Module", "numpy")
 
 pd = ("Module", "pandas")
 
-std_norm_rand = ("Pickle", 2084602201296)
+std_norm_rand = ("Pickle", 2223835764000)
 
-surr_charge_table = ("Pickle", 2084616096176)
+surr_charge_table = ("Pickle", 2223835678336)
 
-product_spec_table = ("Pickle", 2084602159248)
+product_spec_table = ("Pickle", 2223848754928)
 
-model_point_samples = ("Pickle", 2084602074208)
+model_point_samples = ("Pickle", 2223850103360)
 
 scen_id = 1
 
-model_point_table = ("Pickle", 2084602074208)
+model_point_table = ("Pickle", 2223850103360)
 
 input_data = ("Interface", ("..", "InputData"), "auto")
 

@@ -520,6 +520,10 @@ def z_spread_recalc(bond_id):
         ql.Compounded, ql.Annual)
 
 
+def seg_face_value(t):
+    return sum(face_value(i, t) for i in bond_seg())
+
+
 # ---------------------------------------------------------------------------
 # References
 
@@ -533,4 +537,4 @@ input_data = ("Interface", ("..", "InputData"), "auto")
 
 liab_seg = ("Interface", ("..", "LiabSeg"), "auto")
 
-zero_curve = ("IOSpec", 2084601784528, 2084571642192)
+zero_curve = ("IOSpec", 2223848891232, 2223834017584)
