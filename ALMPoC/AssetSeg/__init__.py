@@ -99,12 +99,13 @@ _spaces = []
 
 def bond_seg():
     data = input_data.bond_data()
-    return data[data['ast_seg_id'] == ast_seg_id]
+    seg_data = data[data['ast_seg_id'] == ast_seg_id]
+    return seg_data.index.append(input_data.newmoney_bond_params().index)
 
 
 def bond_term_structure(bond_id):
 
-    spread = input_data.bond_data().loc[bond_id]['z_spread']
+    spread = input_data.spread(bond_id)
     spread = ql.QuoteHandle(ql.SimpleQuote(spread))
     return ql.ZeroSpreadedTermStructure(
         ql.YieldTermStructureHandle(riskfree_curve()), spread,
@@ -185,7 +186,10 @@ def date_(t):
 
 def face_value(bond_id, t):
     if t == 0:
-        return input_data.bond_data().loc[bond_id]['face_value']
+        if input_data.is_inforce_bond(bond_id):
+            return input_data.bond_data().loc[bond_id]['face_value']
+        else:
+            return 0
     else:
         return face_value(bond_id, t-1) + trade_amount(bond_id, t-1)
 
@@ -213,9 +217,9 @@ def fixed_rate_bond(bond_id):
 
     """
     bond_data = input_data.bond_data()
-    settlement_days = bond_data.loc[bond_id]['settlement_days']
+    settlement_days = 0 # bond_data.loc[bond_id]['settlement_days']
     face_value = 1.0 #bond_data.loc[bond_id]['face_value']
-    coupons = [bond_data.loc[bond_id]['coupon_rate']]
+    coupons = [input_data.coupon_rate(bond_id)] #[bond_data.loc[bond_id]['coupon_rate']]
 
     bond = ql.FixedRateBond(
         int(settlement_days), 
@@ -226,7 +230,8 @@ def fixed_rate_bond(bond_id):
         # ql.Actual360(), # DayCount
         ql.Unadjusted)
 
-    spread = bond_data.loc[bond_id]['z_spread']
+    # spread = bond_data.loc[bond_id]['z_spread']
+    spread = input_data.spread(bond_id)
     spread = ql.QuoteHandle(ql.SimpleQuote(spread))
     disc_curve = ql.ZeroSpreadedTermStructure(
         ql.YieldTermStructureHandle(riskfree_curve()), spread,
@@ -376,21 +381,21 @@ def schedule(bond_id):
 
 
     """
-    bond_data = input_data.bond_data()
-    d = bond_data.loc[bond_id]['issue_date']
-    issue_date = ql.Date(d.day, d.month, d.year)
+    # bond_data = input_data.bond_data()
+    # d = bond_data.loc[bond_id]['issue_date']
+    # issue_date = ql.Date(d.day, d.month, d.year)
 
-    d = bond_data.loc[bond_id]['maturity_date']
-    maturity_date = ql.Date(d.day, d.month, d.year)
+    # d = bond_data.loc[bond_id]['maturity_date']
+    # maturity_date = ql.Date(d.day, d.month, d.year)
 
-    tenor  = ql.Period(
-        ql.Semiannual if bond_data.loc[bond_id]['tenor'] == '6Y' else ql.Annual)
+    # tenor  = ql.Period(
+    #     ql.Semiannual if bond_data.loc[bond_id]['tenor'] == '6Y' else ql.Annual)
 
 
     return ql.Schedule(
-        issue_date, 
-        maturity_date, 
-        tenor, 
+        input_data.issue_date(bond_id), # issue_date, 
+        input_data.maturity_date(bond_id), # maturity_date, 
+        input_data.tenor(bond_id),# tenor, 
         ql.UnitedStates(ql.UnitedStates.Settlement),    # calendar
         ql.Unadjusted,                                  # convention
         ql.Unadjusted ,                 # terminationDateConvention
@@ -400,26 +405,26 @@ def schedule(bond_id):
 
 
 def seg_asset_cashflows(t):
-    return sum(step_cashflows(i, t) for i in bond_seg().index)
+    return sum(step_cashflows(i, t) for i in bond_seg())
 
 
-def seg_cash(t):
+def seg_cash_pre_trade(t):
     if t == 0:
         return 0
     else:
-        return seg_cash_after_trade(t-1) + seg_asset_cashflows(t) + liab_cashflows(t)
+        return seg_cash_post_trade(t-1) + seg_asset_cashflows(t-1) + liab_cashflows(t-1)
 
 
-def seg_cash_after_trade(t):
-    return 0
+def seg_cash_post_trade(t):
+    return seg_cash_pre_trade(t) - seg_trade_amount(t)
 
 
 def seg_market_value(t):
-    return sum(market_value(i, t) for i in bond_seg().index)
+    return sum(market_value(i, t) for i in bond_seg())
 
 
 def seg_market_value_pre(t):
-    return sum(market_value_pre(i, t) for i in bond_seg().index)
+    return sum(market_value_pre(i, t) for i in bond_seg())
 
 
 def seg_mv_return(t):
@@ -431,7 +436,7 @@ def seg_mv_return(t):
 
 
 def seg_trade_amount(t):
-    return seg_cash(t)
+    return seg_cash_pre_trade(t)
 
 
 def step_cashflows(bond_id, t):
@@ -528,4 +533,4 @@ input_data = ("Interface", ("..", "InputData"), "auto")
 
 liab_seg = ("Interface", ("..", "LiabSeg"), "auto")
 
-zero_curve = ("IOSpec", 1396292048448, 1380814308896)
+zero_curve = ("IOSpec", 2084601784528, 2084571642192)

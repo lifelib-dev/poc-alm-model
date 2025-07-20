@@ -20,3 +20,5 @@ _spaces = [
 # References
 
 pd = ("Module", "pandas")
+
+ql = ("Module", "QuantLib")

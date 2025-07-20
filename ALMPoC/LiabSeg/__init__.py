@@ -856,8 +856,8 @@ def inv_income(t):
         * :func:`pols_lapse`
 
     """
-    return (inv_income_pp(t) * pols_if_at(t+1, "BEF_MAT")
-            + 0.5 * inv_income_pp(t) * (pols_death(t) + pols_lapse(t)))
+    return (inv_income_pp(t) * pols_if_at(t, "BEF_DECR")
+            - 0.5 * inv_income_pp(t) * (pols_death(t) + pols_lapse(t)))
 
 
 def inv_income_pp(t):
@@ -1831,25 +1831,25 @@ def liab_cf(t):
 # ---------------------------------------------------------------------------
 # References
 
-disc_rate_ann = ("Pickle", 1380814103248)
+disc_rate_ann = ("Pickle", 2084616786560)
 
-mort_table = ("Pickle", 1380814158976)
+mort_table = ("Pickle", 2084602153824)
 
 np = ("Module", "numpy")
 
 pd = ("Module", "pandas")
 
-std_norm_rand = ("Pickle", 1380828292992)
+std_norm_rand = ("Pickle", 2084602201296)
 
-surr_charge_table = ("Pickle", 1380828291456)
+surr_charge_table = ("Pickle", 2084616096176)
 
-product_spec_table = ("Pickle", 1380828286032)
+product_spec_table = ("Pickle", 2084602159248)
 
-model_point_samples = ("Pickle", 1380828293856)
+model_point_samples = ("Pickle", 2084602074208)
 
 scen_id = 1
 
-model_point_table = ("Pickle", 1380828293856)
+model_point_table = ("Pickle", 2084602074208)
 
 input_data = ("Interface", ("..", "InputData"), "auto")
 
