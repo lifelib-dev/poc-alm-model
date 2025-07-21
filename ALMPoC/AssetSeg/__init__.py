@@ -478,8 +478,16 @@ def step_size():
 def trade_amount(bond_id, t):
     if t == 0:
         return 0
-    else:
+
+    elif seg_trade_amount(t) < 0:
         return face_value(bond_id, t) * seg_trade_amount(t) / seg_market_value(t)
+
+    else:
+        if not input_data.is_inforce_bond(bond_id):
+            nb_count = len(input_data.newmoney_bond_params().index)
+            return seg_trade_amount(t) / nb_count
+        else:
+            return 0.0
 
 
 def unit_disc_cashflows(bond_id, t):
